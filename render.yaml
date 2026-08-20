@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: bot-busqueda-vivienda
+    runtime: node
+    plan: free
+    region: frankfurt
+    buildCommand: npm install && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_VERSION
+        value: 20.18.0
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: DB_PATH
+        value: data/database.sqlite
+      - key: LOG_LEVEL
+        value: info
+      - key: DEFAULT_CHECK_INTERVAL_MINUTES
+        value: 30
+      - key: TRACKING_CHECK_INTERVAL_MINUTES
+        value: 30
+      - key: SCRAPER_TIMEOUT_MS
+        value: 15000
