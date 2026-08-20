@@ -76,6 +76,14 @@ async function main() {
     }
   });
 
+  server.on('error', (err: any) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.warn({ port }, `Port ${port} is busy, HTTP health check disabled locally.`);
+    } else {
+      logger.error({ err }, 'HTTP server error');
+    }
+  });
+
   server.listen(port, () => {
     logger.info({ port }, `Health check HTTP server listening on port ${port}`);
   });
