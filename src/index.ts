@@ -59,7 +59,7 @@ async function main() {
   }
 
   // 6. HTTP Health Check Server (Render / Cloud deployment compatibility)
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT) || 3000;
   const server = http.createServer((req, res) => {
     if (req.url === '/health' || req.url === '/' || req.url === '') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -84,8 +84,8 @@ async function main() {
     }
   });
 
-  server.listen(port, () => {
-    logger.info({ port }, `Health check HTTP server listening on port ${port}`);
+  server.listen(port, '0.0.0.0', () => {
+    logger.info({ port }, `Health check HTTP server listening on 0.0.0.0:${port}`);
   });
 
   // Graceful shutdown handlers
