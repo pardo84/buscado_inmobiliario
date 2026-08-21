@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType, cleanAgencyName } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class HabitacliaScraper extends BaseScraper {
@@ -163,7 +163,20 @@ export class HabitacliaScraper extends BaseScraper {
         if (filters.mustHaveTerrace && !features.includes('terraza')) return;
         if (filters.mustHavePool && !features.includes('piscina')) return;
 
-        const agency = itemEl.find('.list-item-agency, .agency-logo, .name-agency').text().trim() || undefined;
+        // Real Local Agency Name extraction
+        let agency: string | undefined = undefined;
+        const agencyName = itemEl.find('.list-item-agency, .name-agency, .agency-logo').text().trim();
+        const agencyImgAlt = itemEl.find('.list-item-agency img, .agency-logo img, img.logo-inmo').attr('alt') ||
+          itemEl.find('.list-item-agency img, .agency-logo img, img.logo-inmo').attr('title');
+        const agencyLink = itemEl.find('a[href*="/inmobiliaria-"], a[href*="/inmo-"]').attr('href');
+        if (agencyName) {
+          agency = cleanAgencyName(agencyName);
+        } else if (agencyImgAlt) {
+          agency = cleanAgencyName(agencyImgAlt);
+        } else if (agencyLink) {
+          const match = agencyLink.match(/inmobiliaria-([^/]+)|inmo-([^/]+)/i);
+          if (match) agency = cleanAgencyName(match[1] || match[2]);
+        }
 
         // Accurate bank check
         const isBank = isBankEntity(agency, title, itemEl.text());

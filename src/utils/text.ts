@@ -168,6 +168,20 @@ export function detectPropertyType(url: string, title: string, description?: str
   return PropertyType.PISO;
 }
 
+export function cleanAgencyName(name?: string): string | undefined {
+  if (!name) return undefined;
+  let clean = name.trim();
+  clean = clean.replace(/[_-]+/g, ' ').trim();
+  // Remove trailing number IDs like " 3162 0" or " 501136 0"
+  clean = clean.replace(/(\s+\d+)+$/g, '').trim();
+  clean = clean
+    .split(' ')
+    .filter(Boolean)
+    .map(w => (w.length <= 3 ? w.toUpperCase() : w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()))
+    .join(' ');
+  return clean.length > 1 ? clean : undefined;
+}
+
 export function isBankEntity(agency?: string, title?: string, text?: string): boolean {
   const agencyLower = (agency || '').toLowerCase();
   const titleLower = (title || '').toLowerCase();

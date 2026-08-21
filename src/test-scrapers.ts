@@ -19,6 +19,7 @@ async function testScrapers() {
       console.log(`\n--- [${idx + 1}] ---`);
       console.log(`Título: ${item.title}`);
       console.log(`Precio: ${item.price} €`);
+      console.log(`Inmobiliaria: ${item.agency || 'Particular / Directo'}`);
       console.log(`Municipio: ${item.town} | Barrio: ${item.neighborhood || 'N/A'}`);
       console.log(`Habs: ${item.rooms || '?'} | Baños: ${item.bathrooms || '?'} | m²: ${item.sqm || '?'}`);
       console.log(`Portal: ${item.portal} | Banco: ${item.isBankProperty ? 'Sí' : 'No'}`);

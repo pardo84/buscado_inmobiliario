@@ -27,8 +27,10 @@ export const MessageFormatter = {
       (listing.neighborhood ? ` (${this.escapeHtml(listing.neighborhood)})` : '') +
       `\n`;
 
-    const agencyLine = listing.agency ? `🏢 Inmobiliaria: <i>${this.escapeHtml(listing.agency)}</i>\n` : '';
-    const portalLine = `🌐 Fuente: <b>${this.escapeHtml(listing.portal.toUpperCase())}</b>\n`;
+    const agencyLine = listing.agency
+      ? `🏢 <b>Inmobiliaria:</b> <i>${this.escapeHtml(listing.agency)}</i>\n`
+      : `👤 <b>Anunciante:</b> <i>Particular / Directo</i>\n`;
+    const portalLine = `🌐 <b>Portal de origen:</b> ${this.escapeHtml(listing.portal.toUpperCase())}\n`;
 
     const text =
       `${routineHeader}${isBank}` +
@@ -39,7 +41,7 @@ export const MessageFormatter = {
       `${featuresLine}` +
       `${agencyLine}` +
       `${portalLine}\n` +
-      `🔗 <a href="${listing.url}"><b>👉 Ver anuncio completo en ${listing.portal.toUpperCase()}</b></a>`;
+      `🔗 <a href="${listing.url}"><b>👉 Ver anuncio en ${listing.agency ? this.escapeHtml(listing.agency) : listing.portal.toUpperCase()}</b></a>`;
 
     const keyboard = new InlineKeyboard()
       .url('🌐 Abrir Anuncio', listing.url)

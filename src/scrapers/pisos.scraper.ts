@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType, cleanAgencyName } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class PisosScraper extends BaseScraper {
@@ -149,8 +149,33 @@ export class PisosScraper extends BaseScraper {
         const img = imgEl.attr('src') || imgEl.attr('data-src');
         const photos = img && !img.includes('data:image') && !img.includes('spacer') ? [img] : [];
 
-        // Real Agency Name
-        const agency = card.find('.ad-preview__agency, .agency-logo, .logo-inmobiliaria, .agency-name').text().trim() || undefined;
+        // Real Local Agency Name extraction
+        let agency: string | undefined = undefined;
+        const logoHref = card.find('.ad-preview__logo [data-lnk-href], .ad-preview__agency [data-lnk-href]').attr('data-lnk-href');
+        if (logoHref) {
+          const match = logoHref.match(/inmobiliaria-([^/]+)/i);
+          if (match && match[1]) {
+            agency = cleanAgencyName(match[1]);
+          }
+        }
+        if (!agency) {
+          const logoImg = card.find('.ad-preview__logo img, .ad-preview__agency img');
+          const alt = logoImg.attr('alt') || logoImg.attr('title');
+          if (alt && alt.toLowerCase() !== 'logo' && alt.length > 2) {
+            agency = cleanAgencyName(alt);
+          }
+        }
+        if (!agency) {
+          const desc = card.find('.ad-preview__description').text();
+          const aicatMatch = desc.match(/([A-Z0-9\s.,ÁÉÍÓÚÀÈÒÇ]+?)\s+(?:es una agencia|és una agència|AICAT|API colegiado)/i);
+          if (aicatMatch && aicatMatch[1] && aicatMatch[1].trim().length < 40) {
+            agency = cleanAgencyName(aicatMatch[1]);
+          }
+        }
+        if (!agency) {
+          const rawText = card.find('.ad-preview__agency, .agency-name').text().trim();
+          if (rawText && rawText.length > 2) agency = cleanAgencyName(rawText);
+        }
 
         // Accurate bank detection
         const isBank = isBankEntity(agency, title, card.text());

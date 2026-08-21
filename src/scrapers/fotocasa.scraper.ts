@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType, cleanAgencyName } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class FotocasaScraper extends BaseScraper {
@@ -144,8 +144,19 @@ export class FotocasaScraper extends BaseScraper {
           title = matchTitle ? matchTitle[0].trim() : `Vivienda en ${town}`;
         }
 
-        // Agency name
-        const agency = card.find('.re-Card-advertiser, .re-CardAdvertiser-name, a[href*="/inmobiliaria-"]').text().trim() || undefined;
+        // Real Local Agency Name extraction
+        let agency: string | undefined = undefined;
+        const agencyName = card.find('.re-Card-advertiser, .re-CardAdvertiser-name, a[href*="/inmobiliaria-"]').text().trim();
+        const agencyLink = card.find('a[href*="/inmobiliaria-"]').attr('href');
+        const agencyImgAlt = card.find('img[class*="Advertiser"], img[class*="advertiser"], .re-CardAdvertiser-logo img').attr('alt');
+        if (agencyName) {
+          agency = cleanAgencyName(agencyName);
+        } else if (agencyImgAlt) {
+          agency = cleanAgencyName(agencyImgAlt);
+        } else if (agencyLink) {
+          const match = agencyLink.match(/inmobiliaria-([^/]+)/i);
+          if (match) agency = cleanAgencyName(match[1]);
+        }
 
         // Accurate bank detection
         const isBank = isBankEntity(agency, title, cardText);
