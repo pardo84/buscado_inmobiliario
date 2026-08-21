@@ -17,9 +17,11 @@ export class FotocasaScraper extends BaseScraper {
   private mapPropertyType(type: PropertyType): string {
     switch (type) {
       case PropertyType.PISO:
-        return 'viviendas';
       case PropertyType.CASA:
-        return 'casas';
+      case PropertyType.DUPLEX:
+      case PropertyType.ATICO:
+      case PropertyType.CUALQUIERA:
+        return 'viviendas';
       case PropertyType.PARKING:
         return 'garajes';
       case PropertyType.TERRENO:
@@ -31,16 +33,15 @@ export class FotocasaScraper extends BaseScraper {
     }
   }
 
-  private mapLocation(locId: string): { slug: string; town: string } {
+  private mapLocation(locId: string): { slug: string; town: Town } {
     switch (locId) {
-      case 'all_granollers':
-        return { slug: 'granollers/todas-las-zonas/l', town: Town.GRANOLLERS };
       case 'cardedeu':
         return { slug: 'cardedeu/todas-las-zonas/l', town: Town.CARDEDEU };
       case 'la_roca':
         return { slug: 'la-roca-del-valles/todas-las-zonas/l', town: Town.LA_ROCA };
       case 'les_franqueses':
         return { slug: 'les-franqueses-del-valles/todas-las-zonas/l', town: Town.LES_FRANQUESES };
+      case 'all_granollers':
       default:
         return { slug: 'granollers/todas-las-zonas/l', town: Town.GRANOLLERS };
     }
@@ -58,21 +59,27 @@ export class FotocasaScraper extends BaseScraper {
       ? filters.locations
       : ['all_granollers'];
 
-    for (const type of types) {
-      const typeSlug = this.mapPropertyType(type);
+    // Deduplicate distinct types slug to query
+    const typeSlugs = Array.from(new Set(types.map(t => this.mapPropertyType(t))));
 
-      for (const locId of locations) {
-        const { slug: locSlug, town } = this.mapLocation(locId);
+    // Deduplicate towns to query
+    const townMap = new Map<string, { slug: string; town: Town }>();
+    for (const locId of locations) {
+      const locInfo = this.mapLocation(locId);
+      townMap.set(locInfo.slug, locInfo);
+    }
 
+    for (const typeSlug of typeSlugs) {
+      for (const [_, locInfo] of townMap.entries()) {
         try {
-          const url = `${this.baseUrl}/es/${opStr}/${typeSlug}/${locSlug}`;
-          logger.info({ scraper: this.name, url, type, locId }, 'Fetching Fotocasa search page');
+          const url = `${this.baseUrl}/es/${opStr}/${typeSlug}/${locInfo.slug}`;
+          logger.info({ scraper: this.name, url, typeSlug, town: locInfo.town }, 'Fetching Fotocasa search page');
 
           const html = await this.fetchHtml(url);
-          const parsed = this.parseListingsFromHtml(html, town, filters);
+          const parsed = this.parseListingsFromHtml(html, locInfo.town, filters);
           listings.push(...parsed);
         } catch (err: any) {
-          logger.warn({ scraper: this.name, type, locId, error: err.message }, 'Failed to fetch Fotocasa listings');
+          logger.warn({ scraper: this.name, typeSlug, town: locInfo.town, error: err.message }, 'Failed to fetch Fotocasa listings');
         }
       }
     }
@@ -159,6 +166,15 @@ export class FotocasaScraper extends BaseScraper {
           propType = PropertyType.PARKING;
         } else if (allLower.includes('terreno') || allLower.includes('solar')) {
           propType = PropertyType.TERRENO;
+        }
+
+        if (
+          filters.propertyTypes &&
+          filters.propertyTypes.length > 0 &&
+          !filters.propertyTypes.includes(PropertyType.CUALQUIERA) &&
+          !filters.propertyTypes.includes(propType)
+        ) {
+          return;
         }
 
         const id = generateListingId('fotocasa', fullUrl);

@@ -24,31 +24,50 @@ export class HabitacliaScraper extends BaseScraper {
         return 'terrenos_y_solares';
       case PropertyType.LOCAL:
         return 'locales_comerciales';
+      case PropertyType.PISO:
+      case PropertyType.DUPLEX:
+      case PropertyType.ATICO:
+      case PropertyType.CUALQUIERA:
       default:
-        return 'vivienda';
+        return 'viviendas';
     }
   }
 
-  private mapLocation(locId: string): { slug: string; town: string; neighborhood?: string } {
+  private buildSearchUrl(opStr: string, typeSlug: string, locId: string): { url: string; town: Town; neighborhood?: string } {
     switch (locId) {
-      case 'all_granollers':
-        return { slug: 'granollers-centre', town: Town.GRANOLLERS };
       case 'cardedeu':
-        return { slug: 'cardedeu-centre', town: Town.CARDEDEU };
+        return {
+          url: `${this.baseUrl}/${opStr}-${typeSlug}-en-cardedeu.htm`,
+          town: Town.CARDEDEU,
+        };
       case 'la_roca':
-        return { slug: 'la_roca_del_valles', town: Town.LA_ROCA };
+        return {
+          url: `${this.baseUrl}/${opStr}-${typeSlug}-en-la_roca_del_valles.htm`,
+          town: Town.LA_ROCA,
+        };
       case 'les_franqueses':
-        return { slug: 'les_franqueses_del_valles', town: Town.LES_FRANQUESES };
+        return {
+          url: `${this.baseUrl}/${opStr}-${typeSlug}-en-les_franqueses_del_valles.htm`,
+          town: Town.LES_FRANQUESES,
+        };
+      case 'all_granollers':
+        return {
+          url: `${this.baseUrl}/${opStr}-${typeSlug}-en-granollers.htm`,
+          town: Town.GRANOLLERS,
+        };
       default:
         if (locId.startsWith('gr_')) {
           const barrioSlug = locId.replace('gr_', '');
           return {
-            slug: `granollers-${barrioSlug}`,
+            url: `${this.baseUrl}/${opStr}-viviendas-granollers_${barrioSlug}.htm`,
             town: Town.GRANOLLERS,
             neighborhood: barrioSlug.replace(/_/g, ' '),
           };
         }
-        return { slug: 'granollers-centre', town: Town.GRANOLLERS };
+        return {
+          url: `${this.baseUrl}/${opStr}-${typeSlug}-en-granollers.htm`,
+          town: Town.GRANOLLERS,
+        };
     }
   }
 
@@ -64,21 +83,20 @@ export class HabitacliaScraper extends BaseScraper {
       ? filters.locations
       : ['all_granollers'];
 
-    for (const type of types) {
-      const typeSlug = this.mapPropertyType(type);
+    const typeSlugs = Array.from(new Set(types.map(t => this.mapPropertyType(t))));
 
+    for (const typeSlug of typeSlugs) {
       for (const locId of locations) {
-        const { slug: locSlug, town, neighborhood } = this.mapLocation(locId);
+        const { url, town, neighborhood } = this.buildSearchUrl(opStr, typeSlug, locId);
 
         try {
-          const url = `${this.baseUrl}/${opStr}-${typeSlug}-${locSlug}.htm`;
-          logger.info({ scraper: this.name, url, type, locId }, 'Fetching Habitaclia search page');
+          logger.info({ scraper: this.name, url, typeSlug, locId }, 'Fetching Habitaclia search page');
 
           const html = await this.fetchHtml(url);
           const parsed = this.parseListingsFromHtml(html, town, neighborhood, filters);
           listings.push(...parsed);
         } catch (err: any) {
-          logger.warn({ scraper: this.name, type, locId, error: err.message }, 'Failed to fetch Habitaclia listings');
+          logger.warn({ scraper: this.name, typeSlug, locId, error: err.message }, 'Failed to fetch Habitaclia listings');
         }
       }
     }
@@ -170,6 +188,15 @@ export class HabitacliaScraper extends BaseScraper {
           propertyType = PropertyType.PARKING;
         } else if (allTextLower.includes('terreno') || allTextLower.includes('solar')) {
           propertyType = PropertyType.TERRENO;
+        }
+
+        if (
+          filters.propertyTypes &&
+          filters.propertyTypes.length > 0 &&
+          !filters.propertyTypes.includes(PropertyType.CUALQUIERA) &&
+          !filters.propertyTypes.includes(propertyType)
+        ) {
+          return;
         }
 
         const id = generateListingId('habitaclia', fullUrl);

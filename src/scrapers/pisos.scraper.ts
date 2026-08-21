@@ -20,32 +20,32 @@ export class PisosScraper extends BaseScraper {
         return 'pisos';
       case PropertyType.CASA:
         return 'casas';
+      case PropertyType.DUPLEX:
+        return 'duplex';
+      case PropertyType.ATICO:
+        return 'aticos';
       case PropertyType.PARKING:
         return 'garajes';
       case PropertyType.TERRENO:
         return 'terrenos';
       case PropertyType.LOCAL:
         return 'locales_comerciales';
+      case PropertyType.CUALQUIERA:
       default:
-        return 'pisos';
+        return 'viviendas';
     }
   }
 
-  private mapLocation(locId: string): { slug: string; town: string; neighborhood?: string } {
+  private mapLocation(locId: string): { slug: string; town: Town } {
     switch (locId) {
-      case 'all_granollers':
-        return { slug: 'granollers', town: Town.GRANOLLERS };
       case 'cardedeu':
         return { slug: 'cardedeu', town: Town.CARDEDEU };
       case 'la_roca':
         return { slug: 'la_roca_del_valles', town: Town.LA_ROCA };
       case 'les_franqueses':
         return { slug: 'les_franqueses_del_valles', town: Town.LES_FRANQUESES };
+      case 'all_granollers':
       default:
-        if (locId.startsWith('gr_')) {
-          const b = locId.replace('gr_', '');
-          return { slug: `granollers_${b}`, town: Town.GRANOLLERS, neighborhood: b.replace(/_/g, ' ') };
-        }
         return { slug: 'granollers', town: Town.GRANOLLERS };
     }
   }
@@ -62,21 +62,27 @@ export class PisosScraper extends BaseScraper {
       ? filters.locations
       : ['all_granollers'];
 
-    for (const type of types) {
-      const typeSlug = this.mapPropertyType(type);
+    // Deduplicate distinct types slug to query
+    const typeSlugs = Array.from(new Set(types.map(t => this.mapPropertyType(t))));
 
-      for (const locId of locations) {
-        const { slug: locSlug, town, neighborhood } = this.mapLocation(locId);
+    // Deduplicate distinct towns
+    const townSlugsMap = new Map<string, { slug: string; town: Town }>();
+    for (const locId of locations) {
+      const locInfo = this.mapLocation(locId);
+      townSlugsMap.set(locInfo.slug, locInfo);
+    }
 
+    for (const typeSlug of typeSlugs) {
+      for (const [_, locInfo] of townSlugsMap.entries()) {
         try {
-          const url = `${this.baseUrl}/${opStr}/${typeSlug}-${locSlug}/`;
-          logger.info({ scraper: this.name, url, type, locId }, 'Fetching Pisos.com page');
+          const url = `${this.baseUrl}/${opStr}/${typeSlug}-${locInfo.slug}/`;
+          logger.info({ scraper: this.name, url, typeSlug, town: locInfo.town }, 'Fetching Pisos.com page');
 
           const html = await this.fetchHtml(url);
-          const parsed = this.parseListingsFromHtml(html, town, neighborhood, filters);
+          const parsed = this.parseListingsFromHtml(html, locInfo.town, filters);
           listings.push(...parsed);
         } catch (err: any) {
-          logger.warn({ scraper: this.name, type, locId, error: err.message }, 'Failed to fetch Pisos.com');
+          logger.warn({ scraper: this.name, typeSlug, town: locInfo.town, error: err.message }, 'Failed to fetch Pisos.com');
         }
       }
     }
@@ -94,7 +100,6 @@ export class PisosScraper extends BaseScraper {
   private parseListingsFromHtml(
     html: string,
     town: string,
-    defaultNeighborhood: string | undefined,
     filters: RoutineFilters
   ): PropertyListing[] {
     const $ = cheerio.load(html);
@@ -165,6 +170,15 @@ export class PisosScraper extends BaseScraper {
           propType = PropertyType.TERRENO;
         }
 
+        if (
+          filters.propertyTypes &&
+          filters.propertyTypes.length > 0 &&
+          !filters.propertyTypes.includes(PropertyType.CUALQUIERA) &&
+          !filters.propertyTypes.includes(propType)
+        ) {
+          return;
+        }
+
         const id = generateListingId('pisos', fullUrl);
         results.push({
           id,
@@ -177,7 +191,7 @@ export class PisosScraper extends BaseScraper {
           propertyType: propType,
           operationType: filters.operationType,
           town,
-          neighborhood: defaultNeighborhood,
+          neighborhood: undefined,
           rooms,
           bathrooms,
           sqm,

@@ -3,14 +3,12 @@ import { PropertyType, OperationType } from './types/listing.js';
 import { logger } from './utils/logger.js';
 
 async function testScrapers() {
-  logger.info('Testing live scraping for Granollers...');
+  logger.info('Testing live scraping for casas in Palou & Can Bassa...');
 
   const listings = await scraperService.executeSearch({
-    propertyTypes: [PropertyType.PISO],
+    propertyTypes: [PropertyType.CASA],
     operationType: OperationType.VENTA,
-    locations: ['all_granollers'],
-    maxPrice: 350000,
-    minRooms: 2,
+    locations: ['gr_palou', 'gr_can_bassa'],
   });
 
   logger.info({ totalFound: listings.length }, 'Search results summary');
