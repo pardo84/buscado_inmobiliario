@@ -3,7 +3,7 @@ import { FotocasaScraper } from './fotocasa.scraper.js';
 import { PisosScraper } from './pisos.scraper.js';
 import { BankScraper } from './bank.scraper.js';
 import { TrackerScraper } from './tracker.scraper.js';
-import { PropertyListing } from '../types/listing.js';
+import { PropertyListing, PropertyType } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { logger } from '../utils/logger.js';
 
@@ -20,23 +20,23 @@ export class ScraperOrchestrator {
     const tasks: Promise<PropertyListing[]>[] = [];
 
     // Habitaclia (Primary & most complete for Granollers / Vallès Oriental)
-    if (!filters.portals || filters.portals.includes('habitaclia') || filters.portals.length === 0) {
+    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('habitaclia') || filters.portals.length === 0)) {
       tasks.push(this.habitaclia.search(filters));
+    }
+
+    // Fotocasa
+    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('fotocasa') || filters.portals.length === 0)) {
+      tasks.push(this.fotocasa.search(filters));
+    }
+
+    // Pisos.com
+    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('pisos') || filters.portals.length === 0)) {
+      tasks.push(this.pisos.search(filters));
     }
 
     // Bank repossessions & servicers
     if (filters.bankPropertiesOnly || !filters.excludeBankProperties) {
       tasks.push(this.bank.search(filters));
-    }
-
-    // Fotocasa
-    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('fotocasa'))) {
-      tasks.push(this.fotocasa.search(filters));
-    }
-
-    // Pisos.com
-    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('pisos'))) {
-      tasks.push(this.pisos.search(filters));
     }
 
     const settled = await Promise.allSettled(tasks);
@@ -50,7 +50,7 @@ export class ScraperOrchestrator {
       }
     }
 
-    // Deduplicate by URL or normalized Title + Price
+    // Deduplicate by URL
     const unique = new Map<string, PropertyListing>();
     for (const listing of allListings) {
       const key = listing.url;
@@ -59,8 +59,43 @@ export class ScraperOrchestrator {
       }
     }
 
-    const result = Array.from(unique.values());
-    logger.info({ count: result.length }, 'Completed multi-portal search');
+    // Strict Post-filtering Stage: ensure 100% adherence to all user criteria
+    const result = Array.from(unique.values()).filter(item => {
+      // 1. Strict Property Type Filter
+      if (
+        filters.propertyTypes &&
+        filters.propertyTypes.length > 0 &&
+        !filters.propertyTypes.includes(PropertyType.CUALQUIERA)
+      ) {
+        if (!filters.propertyTypes.includes(item.propertyType)) {
+          return false;
+        }
+      }
+
+      // 2. Price Filter
+      if (filters.minPrice && item.price < filters.minPrice) return false;
+      if (filters.maxPrice && item.price > filters.maxPrice) return false;
+
+      // 3. Minimum Rooms
+      if (filters.minRooms && item.rooms && item.rooms < filters.minRooms) return false;
+
+      // 4. Minimum Sqm
+      if (filters.minSqm && item.sqm && item.sqm < filters.minSqm) return false;
+
+      // 5. Mandatory Features
+      if (filters.mustHaveElevator && !item.features.includes('ascensor')) return false;
+      if (filters.mustHaveParking && !item.features.includes('parking')) return false;
+      if (filters.mustHaveTerrace && !item.features.includes('terraza')) return false;
+      if (filters.mustHavePool && !item.features.includes('piscina')) return false;
+
+      // 6. Bank Filter
+      if (filters.bankPropertiesOnly && !item.isBankProperty) return false;
+      if (filters.excludeBankProperties && item.isBankProperty) return false;
+
+      return true;
+    });
+
+    logger.info({ totalFound: result.length }, 'Completed multi-portal search with strict filters');
     return result;
   }
 }

@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class HabitacliaScraper extends BaseScraper {
@@ -177,18 +177,7 @@ export class HabitacliaScraper extends BaseScraper {
           photos.push(imgSrc.startsWith('//') ? `https:${imgSrc}` : imgSrc);
         }
 
-        let propertyType = PropertyType.PISO;
-        if (allTextLower.includes('casa') || allTextLower.includes('chalet') || allTextLower.includes('torre')) {
-          propertyType = PropertyType.CASA;
-        } else if (allTextLower.includes('dúplex') || allTextLower.includes('duplex')) {
-          propertyType = PropertyType.DUPLEX;
-        } else if (allTextLower.includes('ático') || allTextLower.includes('atico')) {
-          propertyType = PropertyType.ATICO;
-        } else if (allTextLower.includes('parking') || allTextLower.includes('garaje')) {
-          propertyType = PropertyType.PARKING;
-        } else if (allTextLower.includes('terreno') || allTextLower.includes('solar')) {
-          propertyType = PropertyType.TERRENO;
-        }
+        const propertyType = detectPropertyType(fullUrl, title, itemEl.text());
 
         if (
           filters.propertyTypes &&

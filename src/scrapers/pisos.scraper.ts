@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class PisosScraper extends BaseScraper {
@@ -156,19 +156,7 @@ export class PisosScraper extends BaseScraper {
         const isBank = isBankEntity(agency, title, card.text());
         if (filters.bankPropertiesOnly && !isBank) return;
         if (filters.excludeBankProperties && isBank) return;
-
-        let propType = PropertyType.PISO;
-        if (title.toLowerCase().includes('casa') || title.toLowerCase().includes('chalet') || title.toLowerCase().includes('torre')) {
-          propType = PropertyType.CASA;
-        } else if (title.toLowerCase().includes('dúplex') || title.toLowerCase().includes('duplex')) {
-          propType = PropertyType.DUPLEX;
-        } else if (title.toLowerCase().includes('ático') || title.toLowerCase().includes('atico')) {
-          propType = PropertyType.ATICO;
-        } else if (title.toLowerCase().includes('garaje') || title.toLowerCase().includes('parking')) {
-          propType = PropertyType.PARKING;
-        } else if (title.toLowerCase().includes('terreno') || title.toLowerCase().includes('solar')) {
-          propType = PropertyType.TERRENO;
-        }
+        const propType = detectPropertyType(fullUrl, title, card.text());
 
         if (
           filters.propertyTypes &&

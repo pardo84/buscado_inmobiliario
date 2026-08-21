@@ -3,7 +3,7 @@ import { BaseScraper } from './base.scraper.js';
 import { PropertyListing, PropertyType, OperationType, ListingStatus } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
 import { Town } from '../types/locations.js';
-import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity } from '../utils/text.js';
+import { parsePrice, parseRooms, parseBathrooms, parseSqm, generateListingId, isBankEntity, detectPropertyType } from '../utils/text.js';
 import { logger } from '../utils/logger.js';
 
 export class BankScraper extends BaseScraper {
@@ -91,6 +91,16 @@ export class BankScraper extends BaseScraper {
         const img = imgEl.attr('src') || imgEl.attr('data-src');
         const photos = img && !img.includes('data:image') && !img.includes('spacer') ? [img] : [];
 
+        const propType = detectPropertyType(fullUrl, title, card.text());
+        if (
+          filters.propertyTypes &&
+          filters.propertyTypes.length > 0 &&
+          !filters.propertyTypes.includes(PropertyType.CUALQUIERA) &&
+          !filters.propertyTypes.includes(propType)
+        ) {
+          return;
+        }
+
         const id = generateListingId('pisos', fullUrl);
         results.push({
           id,
@@ -100,7 +110,7 @@ export class BankScraper extends BaseScraper {
           price,
           currency: 'EUR',
           pricePerSqm: sqm ? Math.round(price / sqm) : undefined,
-          propertyType: PropertyType.PISO,
+          propertyType: propType,
           operationType: OperationType.VENTA,
           town,
           rooms,
