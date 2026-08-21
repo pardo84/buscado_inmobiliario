@@ -2,6 +2,7 @@ import { HabitacliaScraper } from './habitaclia.scraper.js';
 import { FotocasaScraper } from './fotocasa.scraper.js';
 import { PisosScraper } from './pisos.scraper.js';
 import { BankScraper } from './bank.scraper.js';
+import { WallapopScraper } from './wallapop.scraper.js';
 import { TrackerScraper } from './tracker.scraper.js';
 import { PropertyListing, PropertyType } from '../types/listing.js';
 import { RoutineFilters } from '../types/routine.js';
@@ -12,6 +13,7 @@ export class ScraperOrchestrator {
   private fotocasa = new FotocasaScraper();
   private pisos = new PisosScraper();
   private bank = new BankScraper();
+  private wallapop = new WallapopScraper();
   public tracker = new TrackerScraper();
 
   async executeSearch(filters: RoutineFilters): Promise<PropertyListing[]> {
@@ -32,6 +34,11 @@ export class ScraperOrchestrator {
     // Pisos.com
     if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('pisos') || filters.portals.length === 0)) {
       tasks.push(this.pisos.search(filters));
+    }
+
+    // Wallapop (Inmuebles particulares y oportunidades locales)
+    if (!filters.bankPropertiesOnly && (!filters.portals || filters.portals.includes('wallapop') || filters.portals.length === 0)) {
+      tasks.push(this.wallapop.search(filters));
     }
 
     // Bank repossessions & servicers

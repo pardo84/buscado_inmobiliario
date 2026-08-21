@@ -31,7 +31,7 @@ export const mainMenu = new Menu<BotContext>('main-menu')
         'ℹ️ <b>No estás siguiendo ningún inmueble todavía.</b>\n\n' +
         'Puedes seguir inmuebles de dos formas:\n' +
         '1️⃣ Pulsando el botón <b>⭐ Seguir Anuncio</b> cuando el bot te notifique una vivienda.\n' +
-        '2️⃣ Pegando directamente cualquier enlace de Habitaclia, Fotocasa o Pisos.com aquí en el chat.',
+        '2️⃣ Pegando directamente cualquier enlace de Pisos.com, Fotocasa, Habitaclia o Wallapop aquí en el chat.',
         { parse_mode: 'HTML' }
       );
       return;
@@ -57,7 +57,7 @@ export const mainMenu = new Menu<BotContext>('main-menu')
       `📌 Rutinas configuradas: <b>${routines.length}</b> (${routines.filter(r => r.isActive).length} activas)\n` +
       `⭐ Inmuebles en seguimiento: <b>${tracked.length}</b>\n` +
       `🏘️ Zonas cubiertas: <i>Granollers (y barrios), Cardedeu, La Roca del Vallès, Les Franqueses</i>\n` +
-      `🌐 Portales activos: <i>Pisos.com, Fotocasa, Habitaclia, Activos de Bancos</i>\n\n` +
+      `🌐 Portales activos: <i>Pisos.com, Fotocasa, Habitaclia, Wallapop, Activos de Bancos</i>\n\n` +
       `⚡ El bot se ejecuta automáticamente en segundo plano.`,
       { parse_mode: 'HTML' }
     );

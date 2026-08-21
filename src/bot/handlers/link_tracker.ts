@@ -23,6 +23,7 @@ export async function handleDirectLink(ctx: BotContext) {
     url.includes('habitaclia.com') ||
     url.includes('fotocasa.es') ||
     url.includes('pisos.com') ||
+    url.includes('wallapop.com') ||
     url.includes('idealista.com') ||
     url.includes('yaencontre.com') ||
     url.includes('servihabitat.com') ||
@@ -47,6 +48,7 @@ export async function handleDirectLink(ctx: BotContext) {
     if (url.includes('habitaclia')) portal = 'habitaclia';
     else if (url.includes('fotocasa')) portal = 'fotocasa';
     else if (url.includes('pisos.com')) portal = 'pisos.com';
+    else if (url.includes('wallapop')) portal = 'wallapop';
     else if (url.includes('idealista')) portal = 'idealista';
     else if (url.includes('servihabitat')) portal = 'servihabitat';
     else if (url.includes('solvia')) portal = 'solvia';
